@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>StrongLifts</title>
+
+<!-- PWA / Home Screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lifts">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#141414">
+
+<!-- Icon injected by JS canvas below -->
+<link id="apple-touch-icon" rel="apple-touch-icon">
+<link id="favicon" rel="icon" type="image/png">
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+
+<script>
+// Generate app icon via canvas and inject as apple-touch-icon
+(function() {
+  const size = 512;
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const ctx = c.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(0, 0, size, size);
+
+  // Rust accent bar on left
+  ctx.fillStyle = '#c94c2e';
+  ctx.fillRect(0, 0, 28, size);
+
+  // "SL" text
+  ctx.fillStyle = '#f0ece4';
+  ctx.font = 'bold 260px Arial Black, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SL', 280, 250);
+
+  // "5×5" sub text in gold
+  ctx.fillStyle = '#d4a843';
+  ctx.font = 'bold 90px Arial, sans-serif';
+  ctx.fillText('5×5', 280, 400);
+
+  const url = c.toDataURL('image/png');
+  document.getElementById('apple-touch-icon').href = url;
+  document.getElementById('favicon').href = url;
+})();
+</script>
+<style>
+  :root {
+    --iron: #141414;
+    --steel: #1f1f1f;
+    --plate: #2a2a2a;
+    --chalk: #f0ece4;
+    --rust: #c94c2e;
+    --gold: #d4a843;
+    --green: #4a9c6d;
+    --muted: #6a6560;
+    --border: #333;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--iron);
+    color: var(--chalk);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 6rem;
+  }
+
+  /* HEADER */
+  .app-header {
+    background: var(--steel);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.2rem 0.8rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .app-header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+  }
+
+  .app-header h1 span { color: var(--rust); }
+
+  .header-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.1rem;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    background: var(--steel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 57px;
+    z-index: 99;
+  }
+
+  .nav-tab {
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .nav-tab.active {
+    color: var(--chalk);
+    border-bottom-color: var(--rust);
+  }
+
+  /* VIEWS */
+  .view { display: none; padding: 1.2rem; }
+  .view.active { display: block; }
+
+  /* WORKOUT SELECTOR */
+  .workout-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .wt-btn {
+    padding: 0.9rem;
+    border: 2px solid var(--border);
+    background: var(--steel);
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+
+  .wt-btn.active-a {
+    border-color: var(--rust);
+    color: var(--rust);
+    background: rgba(201,76,46,0.08);
+  }
+
+  .wt-btn.active-b {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(212,168,67,0.08);
+  }
+
+  /* DATE ROW */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .date-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .date-input {
+    flex: 1;
+    background: var(--steel);
+    border: 1px solid var(--border);
+    color: var(--chalk);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .date-input:focus { border-color: var(--muted); }
+
+  /* LIFT ENTRY CARDS */
+  .lift-card {
+    background: var(--steel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--rust);
+    margin-bottom: 0.8rem;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .lift-card.gold { border-left-color: var(--gold); }
+  .lift-card.green { border-left-color: var(--green); }
+
+  .lift-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+  }
+
+  .lift-name {
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+
+  .lift-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  .lift-prev {
+    text-align: right;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .lift-prev strong {
+    display: block;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+  }
+
+  .lift-body {
+    padding: 0 1rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* SET INPUTS */
+  .sets-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .set-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .set-label {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .set-check {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    background: var(--plate);
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .set-check.done {
+    border-color: var(--green);
+    background: rgba(74,156,109,0.15);
+    color: var(--green);
+  }
+
+  .set-check.failed {
+    border-color: var(--rust);
+    background: rgba(201,76,46,0.15);
+    color: var(--rust);
+  }
+
+  /* For deadlift single set */
+  .sets-grid.single { grid-template-columns: 1fr 4fr; }
+
+  .weight-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .weight-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .weight-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+  }
+
+  .w-btn {
+    width: 36px;
+    height: 36px;
+    background: var(--plate);
+    border: 1px solid var(--border);
+    color: var(--chalk);
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.1s;
+  }
+
+  .w-btn:active { background: #3a3a3a; }
+
+  .weight-val {
+    flex: 1;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+    color: var(--chalk);
+    background: var(--plate);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0.3rem 0;
+    outline: none;
+  }
+
+  .unit-toggle {
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.2rem;
+  }
+
+  .notes-input {
+    width: 100%;
+    background: var(--plate);
+    border: 1px solid var(--border);
+    color: var(--chalk);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 2px;
+    outline: none;
+    margin-top: 0.6rem;
+    resize: none;
+    min-height: 48px;
+  }
+
+  .notes-input::placeholder { color: var(--muted); }
+
+  /* LOG BUTTON */
+  .log-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--rust);
+    color: var(--chalk);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    margin-top: 1.5rem;
+    transition: opacity 0.15s;
+  }
+
+  .log-btn:active { opacity: 0.85; }
+
+  /* HISTORY VIEW */
+  .history-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+    padding: 3rem 1rem;
+    line-height: 1.7;
+  }
+
+  .session-card {
+    background: var(--steel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+
+  .session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+  }
+
+  .session-date {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+  }
+
+  .session-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+  }
+
+  .session-badge.a { background: rgba(201,76,46,0.2); color: var(--rust); }
+  .session-badge.b { background: rgba(212,168,67,0.2); color: var(--gold); }
+
+  .session-body {
+    border-top: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+    display: none;
+  }
+
+  .session-body.open { display: block; }
+
+  .history-lift-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 0.85rem;
+  }
+
+  .history-lift-row:last-child { border-bottom: none; }
+
+  .history-sets {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .h-set {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    font-size: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .h-set.done { background: rgba(74,156,109,0.3); color: var(--green); }
+  .h-set.fail { background: rgba(201,76,46,0.3); color: var(--rust); }
+
+  .delete-session {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    background: none;
+    border: 1px solid #3a3a3a;
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 0.8rem;
+    border-radius: 2px;
+  }
+
+  /* PROGRESS VIEW */
+  .progress-select {
+    width: 100%;
+    background: var(--steel);
+    border: 1px solid var(--border);
+    color: var(--chalk);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 2px;
+    outline: none;
+    margin-bottom: 1.2rem;
+    appearance: none;
+  }
+
+  .pr-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .pr-card {
+    background: var(--steel);
+    border: 1px solid var(--border);
+    padding: 0.9rem;
+    border-radius: 2px;
+    text-align: center;
+  }
+
+  .pr-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+  }
+
+  .pr-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.04em;
+    color: var(--gold);
+  }
+
+  .chart-container {
+    background: var(--steel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1rem;
+  }
+
+  .chart-title {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.8rem;
+  }
+
+  .mini-chart {
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 3px;
+  }
+
+  .bar {
+    width: 100%;
+    background: var(--rust);
+    border-radius: 2px 2px 0 0;
+    min-height: 3px;
+    transition: height 0.3s ease;
+  }
+
+  .bar-date {
+    font-size: 0.5rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .no-data {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    padding: 2rem;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--green);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.7rem 1.4rem;
+    border-radius: 3px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* STANDALONE / HOME SCREEN */
+  @media (display-mode: standalone) {
+    body { padding-top: env(safe-area-inset-top); }
+    .app-header { padding-top: calc(1rem + env(safe-area-inset-top)); }
+  }
+
+  /* SPLASH SCREEN */
+  #splash {
+    position: fixed;
+    inset: 0;
+    background: #0d1a2a;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    transition: opacity 0.5s ease;
+  }
+
+  #splash.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #splash-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    width: 220px;
+    height: 220px;
+  }
+
+  .splash-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    letter-spacing: 0.08em;
+    color: #f0ece4;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .splash-title span { color: #c94c2e; }
+
+  .splash-sub {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.3em;
+    color: #d4a843;
+    text-align: center;
+    margin-top: -0.6rem;
+  }
+
+  /* BOTTOM SAFE AREA */
+  .bottom-space { height: 2rem; }
+
+  /* SETTINGS */
+  .settings-section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+
+  .settings-card {
+    background: var(--steel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 2px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .settings-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .settings-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 0.8rem;
+  }
+
+  .settings-btn {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    text-align: center;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+
+  .export-btn {
+    background: var(--green);
+    border: none;
+    color: white;
+  }
+
+  .import-btn {
+    background: var(--plate);
+    border: 1px solid var(--border);
+    color: var(--chalk);
+  }
+
+  .danger-btn {
+    background: none;
+    border: 1px solid var(--rust);
+    color: var(--rust);
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <canvas id="splash-canvas" width="44" height="44"></canvas>
+  <div>
+    <div class="splash-title">Strong<span>Lifts</span></div>
+    <div class="splash-sub">5 × 5 TRACKER</div>
+  </div>
+</div>
+
+<div class="app-header">
+  <h1>Strong<span>Lifts</span> Tracker</h1>
+  <div class="header-sub">5×5 + Lat Pulldown</div>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('log')">Log</div>
+  <div class="nav-tab" onclick="switchTab('history')">History</div>
+  <div class="nav-tab" onclick="switchTab('progress')">Progress</div>
+  <div class="nav-tab" onclick="switchTab('settings')">Data</div>
+</div>
+
+<!-- LOG VIEW -->
+<div id="view-log" class="view active">
+
+  <div class="workout-toggle">
+    <button class="wt-btn active-a" id="btn-a" onclick="selectWorkout('A')">Workout A</button>
+    <button class="wt-btn" id="btn-b" onclick="selectWorkout('B')">Workout B</button>
+  </div>
+
+  <div class="date-row">
+    <span class="date-label">Date</span>
+    <input type="date" class="date-input" id="session-date">
+  </div>
+
+  <div id="lifts-container"></div>
+
+  <button class="log-btn" onclick="saveSession()">Save Session</button>
+  <div class="bottom-space"></div>
+</div>
+
+<!-- HISTORY VIEW -->
+<div id="view-history" class="view">
+  <div id="history-list"></div>
+  <div class="bottom-space"></div>
+</div>
+
+<!-- PROGRESS VIEW -->
+<div id="view-progress" class="view">
+  <select class="progress-select" id="progress-lift" onchange="renderProgress()">
+    <option value="Squat">Squat</option>
+    <option value="Bench Press">Bench Press</option>
+    <option value="Barbell Row">Barbell Row</option>
+    <option value="Overhead Press">Overhead Press</option>
+    <option value="Deadlift">Deadlift</option>
+    <option value="Lat Pulldown">Lat Pulldown</option>
+  </select>
+  <div class="pr-box" id="pr-box"></div>
+  <div class="chart-container">
+    <div class="chart-title">Weight Over Time</div>
+    <div class="mini-chart" id="mini-chart"></div>
+  </div>
+  <div class="bottom-space"></div>
+</div>
+
+<!-- SETTINGS VIEW -->
+<div id="view-settings" class="view">
+
+  <div class="settings-section-label">Backup &amp; Restore</div>
+
+  <div class="settings-card">
+    <div class="settings-title">Export Data</div>
+    <div class="settings-desc">Download all sessions as a JSON backup to your device (Files app on iPhone, Downloads on Android).</div>
+    <button class="settings-btn export-btn" onclick="exportData()">⬇ Export to File</button>
+  </div>
+
+  <div class="settings-card">
+    <div class="settings-title">Import Data</div>
+    <div class="settings-desc">Restore from a previously exported JSON file. Merges with existing sessions — no duplicates.</div>
+    <label class="settings-btn import-btn">
+      ⬆ Import from File
+      <input type="file" accept=".json" id="import-input" style="display:none" onchange="importData(event)">
+    </label>
+  </div>
+
+  <div class="settings-card" style="border-left-color:var(--rust)">
+    <div class="settings-title" style="color:var(--rust)">Clear All Data</div>
+    <div class="settings-desc">Permanently deletes all sessions from this device. Export first if you want a backup.</div>
+    <button class="settings-btn danger-btn" onclick="clearAllData()">✕ Delete All Sessions</button>
+  </div>
+
+  <div class="settings-section-label" style="margin-top:1.5rem;">Stats</div>
+  <div class="settings-card" style="text-align:center;padding:1.2rem 1rem;">
+    <div id="session-count-display" style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;letter-spacing:0.05em;color:var(--gold);"></div>
+    <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.2rem;">Sessions Logged</div>
+  </div>
+
+  <div class="bottom-space"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────
+const WORKOUTS = {
+  A: [
+    { name: 'Squat',       sets: 5, reps: 5, increment: 10, color: 'rust' },
+    { name: 'Bench Press', sets: 5, reps: 5, increment: 5,  color: 'rust' },
+    { name: 'Barbell Row', sets: 5, reps: 5, increment: 5,  color: 'rust' },
+    { name: 'Lat Pulldown',sets: 3, reps: 10,increment: 5,  color: 'gold' },
+  ],
+  B: [
+    { name: 'Squat',         sets: 5, reps: 5, increment: 10, color: 'rust' },
+    { name: 'Overhead Press',sets: 5, reps: 5, increment: 5,  color: 'rust' },
+    { name: 'Deadlift',      sets: 1, reps: 5, increment: 10, color: 'rust' },
+    { name: 'Lat Pulldown',  sets: 3, reps: 10,increment: 5,  color: 'gold' },
+  ]
+};
+
+let currentWorkout = 'A';
+let setStates = {}; // liftName -> array of 'open'|'done'|'failed'
+let weights = {};   // liftName -> number
+let notes = {};     // liftName -> string
+
+function getSessions() {
+  try { return JSON.parse(localStorage.getItem('sl_sessions') || '[]'); } catch { return []; }
+}
+
+function saveSessions(s) {
+  localStorage.setItem('sl_sessions', JSON.stringify(s));
+}
+
+function getLastWeight(liftName) {
+  const sessions = getSessions();
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    const lift = sessions[i].lifts.find(l => l.name === liftName);
+    if (lift) return lift.weight;
+  }
+  return null;
+}
+
+function getSuggestedWeight(lift) {
+  const sessions = getSessions();
+  // Find last session with this lift
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    const s = sessions[i];
+    const l = s.lifts.find(l => l.name === lift.name);
+    if (!l) continue;
+    // If all sets passed, suggest increment
+    const allPassed = l.sets.every(s => s === 'done');
+    if (allPassed) return l.weight + lift.increment;
+    return l.weight; // retry same weight
+  }
+  // Defaults
+  const defaults = { Squat: 45, 'Bench Press': 45, 'Barbell Row': 45, 'Overhead Press': 45, Deadlift: 95, 'Lat Pulldown': 50 };
+  return defaults[lift.name] || 45;
+}
+
+// ── INIT ─────────────────────────────────────────────────
+function initLog() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('session-date').value = today;
+  selectWorkout(currentWorkout);
+}
+
+function selectWorkout(w) {
+  currentWorkout = w;
+  document.getElementById('btn-a').className = 'wt-btn' + (w === 'A' ? ' active-a' : '');
+  document.getElementById('btn-b').className = 'wt-btn' + (w === 'B' ? ' active-b' : '');
+  
+  setStates = {};
+  weights = {};
+  notes = {};
+  
+  WORKOUTS[w].forEach(lift => {
+    setStates[lift.name] = Array(lift.sets).fill('open');
+    weights[lift.name] = getSuggestedWeight(lift);
+    notes[lift.name] = '';
+  });
+  
+  renderLifts();
+}
+
+function renderLifts() {
+  const container = document.getElementById('lifts-container');
+  container.innerHTML = '';
+  
+  WORKOUTS[currentWorkout].forEach(lift => {
+    const last = getLastWeight(lift.name);
+    const isSingle = lift.sets === 1;
+    
+    const card = document.createElement('div');
+    card.className = `lift-card ${lift.color === 'gold' ? 'gold' : ''}`;
+    card.innerHTML = `
+      <div class="lift-header">
+        <div>
+          <div class="lift-name">${lift.name}</div>
+          <div class="lift-meta">${lift.sets}×${lift.reps}</div>
+        </div>
+        <div class="lift-prev">
+          <span>Last</span>
+          <strong>${last !== null ? last + ' lbs' : '—'}</strong>
+        </div>
+      </div>
+      <div class="lift-body">
+        <div class="weight-row">
+          <span class="weight-label">Weight</span>
+          <div class="weight-controls">
+            <button class="w-btn" onclick="adjustWeight('${lift.name}', -${lift.increment})">−</button>
+            <input class="weight-val" type="number" id="w-${lift.name.replace(/ /g,'_')}" value="${weights[lift.name]}" 
+              onchange="weights['${lift.name}'] = +this.value" inputmode="decimal">
+            <button class="w-btn" onclick="adjustWeight('${lift.name}', ${lift.increment})">+</button>
+          </div>
+          <span style="font-size:0.7rem;color:var(--muted);margin-left:0.3rem;">lbs</span>
+        </div>
+        <div class="sets-grid ${isSingle ? 'single' : ''}" id="sets-${lift.name.replace(/ /g,'_')}">
+          ${Array(lift.sets).fill(0).map((_, i) => `
+            <div class="set-col">
+              <span class="set-label">S${i+1}</span>
+              <div class="set-check" id="set-${lift.name.replace(/ /g,'_')}-${i}" onclick="cycleSet('${lift.name}', ${i})">·</div>
+            </div>
+          `).join('')}
+        </div>
+        <textarea class="notes-input" placeholder="Notes…" rows="1"
+          onchange="notes['${lift.name}'] = this.value"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      </div>
+    `;
+    container.appendChild(card);
+    updateSetDisplay(lift.name);
+  });
+}
+
+function adjustWeight(liftName, delta) {
+  weights[liftName] = Math.max(0, (weights[liftName] || 0) + delta);
+  const key = liftName.replace(/ /g, '_');
+  document.getElementById('w-' + key).value = weights[liftName];
+}
+
+function cycleSet(liftName, idx) {
+  const states = ['open', 'done', 'failed'];
+  const cur = setStates[liftName][idx];
+  const next = states[(states.indexOf(cur) + 1) % states.length];
+  setStates[liftName][idx] = next;
+  updateSetDisplay(liftName);
+}
+
+function updateSetDisplay(liftName) {
+  const key = liftName.replace(/ /g, '_');
+  setStates[liftName].forEach((state, i) => {
+    const el = document.getElementById(`set-${key}-${i}`);
+    if (!el) return;
+    el.className = 'set-check' + (state === 'done' ? ' done' : state === 'failed' ? ' failed' : '');
+    el.textContent = state === 'done' ? '✓' : state === 'failed' ? '✗' : '·';
+  });
+}
+
+// ── SAVE ─────────────────────────────────────────────────
+function saveSession() {
+  const date = document.getElementById('session-date').value;
+  if (!date) { showToast('Pick a date first'); return; }
+  
+  const lifts = WORKOUTS[currentWorkout].map(lift => ({
+    name: lift.name,
+    weight: weights[lift.name],
+    sets: [...setStates[lift.name]],
+    notes: notes[lift.name] || ''
+  }));
+  
+  const session = { id: Date.now(), date, workout: currentWorkout, lifts };
+  const sessions = getSessions();
+  sessions.push(session);
+  saveSessions(sessions);
+  
+  showToast('Session saved ✓');
+  setTimeout(() => switchTab('history'), 800);
+}
+
+// ── HISTORY ───────────────────────────────────────────────
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const sessions = getSessions().slice().reverse();
+  
+  if (!sessions.length) {
+    list.innerHTML = '<div class="history-empty">No sessions logged yet.<br>Complete your first workout above.</div>';
+    return;
+  }
+  
+  list.innerHTML = sessions.map(s => {
+    const d = new Date(s.date + 'T12:00:00');
+    const dateStr = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const liftsHtml = s.lifts.map(l => {
+      const setsHtml = l.sets.map(st => 
+        `<div class="h-set ${st === 'done' ? 'done' : st === 'failed' ? 'fail' : ''}">${st === 'done' ? '✓' : st === 'failed' ? '✗' : '·'}</div>`
+      ).join('');
+      return `
+        <div class="history-lift-row">
+          <span>${l.name}</span>
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:var(--gold)">${l.weight} lbs</span>
+            <div class="history-sets">${setsHtml}</div>
+          </div>
+        </div>`;
+    }).join('');
+    
+    return `
+      <div class="session-card">
+        <div class="session-header" onclick="toggleSession('sess-${s.id}')">
+          <div>
+            <div class="session-date">${dateStr}</div>
+          </div>
+          <span class="session-badge ${s.workout.toLowerCase()}">Workout ${s.workout}</span>
+        </div>
+        <div class="session-body" id="sess-${s.id}">
+          ${liftsHtml}
+          <button class="delete-session" onclick="deleteSession(${s.id})">Delete Session</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSession(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+function deleteSession(id) {
+  if (!confirm('Delete this session?')) return;
+  const sessions = getSessions().filter(s => s.id !== id);
+  saveSessions(sessions);
+  renderHistory();
+}
+
+// ── PROGRESS ──────────────────────────────────────────────
+function renderProgress() {
+  const liftName = document.getElementById('progress-lift').value;
+  const sessions = getSessions();
+  const entries = [];
+  
+  sessions.forEach(s => {
+    const lift = s.lifts.find(l => l.name === liftName);
+    if (lift) entries.push({ date: s.date, weight: lift.weight, sets: lift.sets });
+  });
+  
+  // PR box
+  const prBox = document.getElementById('pr-box');
+  if (!entries.length) {
+    prBox.innerHTML = '<div class="no-data" style="grid-column:1/-1">No data yet for this lift.</div>';
+    document.getElementById('mini-chart').innerHTML = '<div class="no-data">Log some sessions first.</div>';
+    return;
+  }
+  
+  const maxW = Math.max(...entries.map(e => e.weight));
+  const latest = entries[entries.length - 1];
+  const first = entries[0];
+  const gained = latest.weight - first.weight;
+  
+  prBox.innerHTML = `
+    <div class="pr-card">
+      <div class="pr-label">Current</div>
+      <div class="pr-val">${latest.weight}<span style="font-size:0.8rem;color:var(--muted)"> lbs</span></div>
+    </div>
+    <div class="pr-card">
+      <div class="pr-label">Best</div>
+      <div class="pr-val">${maxW}<span style="font-size:0.8rem;color:var(--muted)"> lbs</span></div>
+    </div>
+    <div class="pr-card">
+      <div class="pr-label">Sessions</div>
+      <div class="pr-val">${entries.length}</div>
+    </div>
+    <div class="pr-card">
+      <div class="pr-label">Total Gain</div>
+      <div class="pr-val" style="color:${gained >= 0 ? 'var(--green)' : 'var(--rust)'}">
+        ${gained >= 0 ? '+' : ''}${gained}<span style="font-size:0.8rem;color:var(--muted)"> lbs</span>
+      </div>
+    </div>`;
+  
+  // Mini bar chart
+  const chart = document.getElementById('mini-chart');
+  const recent = entries.slice(-12);
+  const maxVal = Math.max(...recent.map(e => e.weight)) || 1;
+  
+  chart.innerHTML = recent.map(e => {
+    const h = Math.round((e.weight / maxVal) * 90);
+    const d = new Date(e.date + 'T12:00:00');
+    const label = (d.getMonth()+1) + '/' + d.getDate();
+    return `
+      <div class="bar-wrap">
+        <div class="bar" style="height:${h}px" title="${e.weight} lbs"></div>
+        <span class="bar-date">${label}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── UI HELPERS ────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-tab')[['log','history','progress','settings'].indexOf(tab)].classList.add('active');
+  
+  if (tab === 'history') renderHistory();
+  if (tab === 'progress') renderProgress();
+  if (tab === 'settings') renderSettings();
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────
+function exportData() {
+  const sessions = getSessions();
+  if (!sessions.length) { showToast('No sessions to export'); return; }
+  const json = JSON.stringify({ exported: new Date().toISOString(), sessions }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `stronglifts-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${sessions.length} sessions ✓`);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const incoming = data.sessions || (Array.isArray(data) ? data : null);
+      if (!incoming) { showToast('Invalid backup file'); return; }
+      const existing = getSessions();
+      const existingIds = new Set(existing.map(s => s.id));
+      const merged = [...existing, ...incoming.filter(s => !existingIds.has(s.id))];
+      merged.sort((a, b) => new Date(a.date) - new Date(b.date));
+      saveSessions(merged);
+      const added = merged.length - existing.length;
+      showToast(`Imported ${added} new session${added !== 1 ? 's' : ''} ✓`);
+      renderSettings();
+    } catch {
+      showToast('Could not read file');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAllData() {
+  const sessions = getSessions();
+  if (!sessions.length) { showToast('Nothing to clear'); return; }
+  if (!confirm(`Delete all ${sessions.length} sessions? This cannot be undone.`)) return;
+  saveSessions([]);
+  showToast('All data cleared');
+  renderSettings();
+}
+
+function renderSettings() {
+  const count = getSessions().length;
+  const el = document.getElementById('session-count-display');
+  if (el) el.textContent = count;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── START ─────────────────────────────────────────────────
+// Draw pixel art Statue of Liberty lifting weights
+(function drawPixelLady() {
+  const canvas = document.getElementById('splash-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = 44, H = 44;
+
+  // Color palette
+  const _ = null;           // transparent
+  const G = '#5a9e7a';      // liberty green (body)
+  const g = '#3d7a5c';      // dark green (shadow)
+  const L = '#7dc4a0';      // light green (highlight)
+  const S = '#c8bfa0';      // stone/base
+  const s = '#a09070';      // dark stone
+  const C = '#d4a843';      // gold (crown/torch flame)
+  const c = '#b88a2a';      // dark gold
+  const F = '#e8c87a';      // flame bright
+  const R = '#c0c0c0';      // barbell silver
+  const r = '#888';         // barbell dark
+  const P = '#888888';      // plate dark grey
+  const p = '#aaaaaa';      // plate light grey
+  const B = '#1a3a5c';      // sky dark
+  const T = '#f0ece4';      // torch handle (light)
+
+  // 44×44 pixel grid — Lady Liberty lifting a barbell overhead
+  const grid = [
+    //0         1         2         3         4
+    //0123456789012345678901234567890123456789012 3
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//0
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//1
+    // barbell top - left plate | bar | right plate
+    [_,_,_,P,P,P,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,P,P,P,_,_],//2
+    [_,_,P,P,P,P,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,P,P,P,P,_],//3
+    [_,_,P,P,P,P,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,P,P,P,P,_],//4
+    [_,_,_,P,P,P,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,P,P,P,_,_],//5
+    // arms up
+    [_,_,_,_,_,_,_,_,_,g,G,G,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,G,G,g,_,_,_,_,_,_,_,_,_,_],//6
+    [_,_,_,_,_,_,_,_,_,g,G,G,L,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,L,G,G,g,_,_,_,_,_,_,_,_,_,_],//7
+    [_,_,_,_,_,_,_,_,_,_,g,G,G,L,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,L,G,G,g,_,_,_,_,_,_,_,_,_,_,_],//8
+    // crown
+    [_,_,_,_,_,_,_,_,_,_,_,g,G,G,_,C,_,C,_,C,_,C,_,C,_,_,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//9
+    [_,_,_,_,_,_,_,_,_,_,_,g,G,G,C,C,C,C,C,C,C,C,C,C,C,C,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//10
+    // head
+    [_,_,_,_,_,_,_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//11
+    [_,_,_,_,_,_,_,_,_,_,_,_,g,G,L,G,G,G,G,G,G,G,G,G,G,L,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//12
+    [_,_,_,_,_,_,_,_,_,_,_,_,g,G,G,g,G,G,G,G,G,G,G,G,g,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//13
+    [_,_,_,_,_,_,_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//14
+    // neck + shoulders wide
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//15
+    [_,_,_,_,_,_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//16
+    // upper torso - robe
+    [_,_,_,_,_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//17
+    [_,_,_,_,_,_,_,_,_,g,G,G,g,G,G,G,G,G,G,G,G,G,G,G,G,G,g,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_],//18
+    [_,_,_,_,_,_,_,_,g,G,G,G,G,g,G,G,G,G,G,G,G,G,G,G,G,g,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_],//19
+    [_,_,_,_,_,_,_,g,G,G,G,G,G,G,g,G,G,G,G,G,G,G,G,G,g,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_],//20
+    // mid torso
+    [_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,g,G,G,G,G,G,G,G,g,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_],//21
+    [_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,g,G,G,G,G,G,g,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_],//22
+    [_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,g,G,G,G,g,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_],//23
+    [_,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,g,G,g,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_],//24
+    // lower torso - wider robe
+    [_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_],//25
+    [_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_],//26
+    [_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_],//27
+    [_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_],//28
+    [_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_],//29
+    // legs / lower robe
+    [_,_,_,_,g,G,G,G,G,G,G,G,G,g,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_],//30
+    [_,_,_,_,_,g,G,G,G,G,G,G,g,_,_,g,G,G,G,G,G,G,G,G,G,G,G,G,G,g,_,_,g,G,g,_,_,_,_,_,_,_,_,_],//31
+    [_,_,_,_,_,_,g,G,G,G,G,g,_,_,_,_,g,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,g,_,_,_,_,_,_,_,_,_,_],//32
+    [_,_,_,_,_,_,_,g,G,G,G,g,_,_,_,_,_,g,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//33
+    [_,_,_,_,_,_,_,_,g,G,G,g,_,_,_,_,_,_,g,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//34
+    // feet / base
+    [_,_,_,_,_,_,_,g,G,G,G,G,g,_,_,_,_,g,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//35
+    [_,_,_,_,_,_,g,G,G,G,G,G,G,g,_,_,g,G,G,G,G,G,G,G,G,G,G,G,g,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//36
+    // pedestal
+    [_,_,_,_,_,S,S,S,S,S,S,S,S,S,S,_,_,S,S,S,S,S,S,S,S,S,S,S,S,S,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//37
+    [_,_,_,_,s,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,s,_,_,_,_,_,_,_,_,_,_,_,_,_],//38
+    [_,_,_,s,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,s,_,_,_,_,_,_,_,_,_,_,_,_],//39
+    [_,_,s,s,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,s,s,_,_,_,_,_,_,_,_,_,_],//40
+    [_,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,_,_,_,_,_,_,_,_,_],//41
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//42
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],//43
+  ];
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const col = grid[y][x];
+      if (col) {
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
+  // Also use as app icon
+  const bigCanvas = document.createElement('canvas');
+  bigCanvas.width = 512; bigCanvas.height = 512;
+  const bctx = bigCanvas.getContext('2d');
+  bctx.fillStyle = '#0d1a2a';
+  bctx.fillRect(0, 0, 512, 512);
+  bctx.imageSmoothingEnabled = false;
+  bctx.drawImage(canvas, 30, 20, 452, 472);
+  const url = bigCanvas.toDataURL('image/png');
+  document.getElementById('apple-touch-icon').href = url;
+  document.getElementById('favicon').href = url;
+})();
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    splash.classList.add('hidden');
+    setTimeout(() => splash.remove(), 500);
+  }, 1400);
+});
+
+initLog();
+</script>
+</body>
+</html>
